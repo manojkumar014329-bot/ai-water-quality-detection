@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Water Quality Detection | pH Strip & Computer Vision</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-droplet"></i>
+                </div>
+                <div class="brand-text">
+                    <h2>AI Water Quality</h2>
+                    <span>pH Vision System</span>
+                </div>
+            </div>
+
+            <div class="project-badge">
+                <i class="fa-solid fa-graduation-cap"></i> College Mini-Project
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#dashboard-section" class="nav-link active" data-section="dashboard-section">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#analyze-section" class="nav-link" data-section="analyze-section">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Analyze Water</span>
+                </a>
+                <a href="#history-section" class="nav-link" data-section="history-section">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>History & Trends</span>
+                </a>
+                <a href="#about-section" class="nav-link" data-section="about-section">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>About Project</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="db-status">
+                    <span class="status-dot online"></span>
+                    <span>SQLite Local DB Active</span>
+                </div>
+                <div class="model-status">
+                    <i class="fa-solid fa-brain"></i>
+                    <span>RandomForest Regressor</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top App Bar -->
+            <header class="top-bar">
+                <div class="header-title">
+                    <h1>AI-Based Water Quality Detection</h1>
+                    <p class="subtitle">pH Strip Colorimetry & Computer Vision Machine Learning System</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-outline" id="refresh-all-btn" title="Refresh Dashboard Data">
+                        <i class="fa-solid fa-arrows-rotate"></i> Refresh Data
+                    </button>
+                    <a href="#analyze-section" class="btn btn-primary">
+                        <i class="fa-solid fa-camera"></i> New Test
+                    </a>
+                </div>
+            </header>
+
+            <div class="content-body">
+                <!-- Section 1: Dashboard Stats -->
+                <section id="dashboard-section" class="content-section">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-gauge-high"></i> Overview Metrics</h2>
+                        <span class="section-desc">Summary of test analyses recorded in local SQLite database</span>
+                    </div>
+
+                    <div class="stats-grid">
+                        <!-- Card 1 -->
+                        <div class="stat-card">
+                            <div class="stat-icon icon-blue">
+                                <i class="fa-solid fa-flask-vial"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Total Analyses</span>
+                                <h3 class="stat-value" id="stat-total">0</h3>
+                                <span class="stat-subtext">Recorded locally</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 2 -->
+                        <div class="stat-card">
+                            <div class="stat-icon icon-cyan">
+                                <i class="fa-solid fa-water"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Latest pH</span>
+                                <h3 class="stat-value" id="stat-latest">--</h3>
+                                <span class="stat-badge" id="stat-latest-badge">No tests yet</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 3 -->
+                        <div class="stat-card">
+                            <div class="stat-icon icon-emerald">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Water Status</span>
+                                <h3 class="stat-value" id="stat-status">--</h3>
+                                <span class="stat-subtext" id="stat-safe-pct">Safe standard: 6.5–8.5</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 4 -->
+                        <div class="stat-card">
+                            <div class="stat-icon icon-purple">
+                                <i class="fa-solid fa-calculator"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Average pH</span>
+                                <h3 class="stat-value" id="stat-avg">--</h3>
+                                <span class="stat-subtext">Cumulative average</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 2: Main Analysis Section -->
+                <section id="analyze-section" class="content-section">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-microchip"></i> Water Quality Analysis</h2>
+                        <span class="section-desc">Upload a photo of a pH strip or select a demo sample image</span>
+                    </div>
+
+                    <div class="analysis-container">
+                        <!-- Left Column: Upload & Controls -->
+                        <div class="upload-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-cloud-arrow-up"></i> Upload pH Strip Image</h3>
+                            </div>
+
+                            <!-- Drag & Drop Upload Zone -->
+                            <div class="drop-zone" id="drop-zone">
+                                <input type="file" id="file-input" accept="image/jpeg,image/png,image/jpg,image/webp" class="file-input-hidden">
+                                
+                                <div class="drop-zone-content" id="drop-zone-prompt">
+                                    <div class="upload-icon-wrapper">
+                                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                                    </div>
+                                    <h4>Drag & Drop your pH strip image here</h4>
+                                    <p>or <span class="browse-btn">browse files</span> from your computer</p>
+                                    <div class="file-types-hint">Supported formats: JPG, JPEG, PNG (Max 10MB)</div>
+                                </div>
+
+                                <!-- Image Preview Container -->
+                                <div class="image-preview-container" id="preview-container" style="display: none;">
+                                    <img id="preview-image" src="" alt="pH Strip Preview">
+                                    <div class="preview-overlay">
+                                        <button type="button" class="btn-remove-preview" id="btn-remove-preview" title="Remove image">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                        <div class="preview-info" id="preview-info">image.jpg (300 KB)</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Sample Strip Selector -->
+                            <div class="sample-selector-block">
+                                <div class="sample-title">
+                                    <i class="fa-solid fa-flask"></i> Quick Demo Samples:
+                                </div>
+                                <div class="sample-buttons">
+                                    <button type="button" class="btn-sample" data-sample="sample_acidic_ph4.png" data-name="Acidic pH ~4.0">
+                                        <span class="sample-color-dot acidic"></span> Acidic Sample (pH 4)
+                                    </button>
+                                    <button type="button" class="btn-sample" data-sample="sample_safe_neutral_ph7.png" data-name="Safe / Neutral pH ~7.0">
+                                        <span class="sample-color-dot safe"></span> Safe / Neutral (pH 7)
+                                    </button>
+                                    <button type="button" class="btn-sample" data-sample="sample_alkaline_ph10.png" data-name="Alkaline pH ~10.0">
+                                        <span class="sample-color-dot alkaline"></span> Alkaline Sample (pH 10)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Analyze Button -->
+                            <div class="action-bar">
+                                <button type="button" class="btn btn-primary btn-large btn-block" id="btn-analyze" disabled>
+                                    <i class="fa-solid fa-magnifying-glass-chart"></i> Analyze Water Quality
+                                </button>
+                            </div>
+
+                            <!-- Loading State -->
+                            <div class="loading-state" id="loading-state" style="display: none;">
+                                <div class="spinner"></div>
+                                <h4>Analyzing pH strip...</h4>
+                                <p>Extracting ROI contours & Computing HSV color features</p>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Results Display -->
+                        <div class="result-card" id="result-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-clipboard-check"></i> Analysis Result</h3>
+                                <span class="result-timestamp" id="result-time">Ready for input</span>
+                            </div>
+
+                            <div class="result-placeholder" id="result-placeholder">
+                                <div class="placeholder-icon">
+                                    <i class="fa-solid fa-chart-line"></i>
+                                </div>
+                                <h4>No Image Analyzed Yet</h4>
+                                <p>Upload or pick a sample pH strip image on the left and click "Analyze Water Quality" to see predictions.</p>
+                            </div>
+
+                            <div class="result-content" id="result-content" style="display: none;">
+                                <!-- Primary Result: pH Meter & Classification -->
+                                <div class="primary-result-box">
+                                    <div class="ph-circle-display" id="ph-circle">
+                                        <div class="ph-number-group">
+                                            <span class="ph-prefix">pH</span>
+                                            <span class="ph-value" id="result-ph">7.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="ph-classification-group">
+                                        <span class="classification-title">Water Classification</span>
+                                        <div class="classification-badge" id="result-badge">Safe / Neutral</div>
+                                        <div class="confidence-container">
+                                            <div class="confidence-label">
+                                                <span>Model Confidence</span>
+                                                <strong id="result-confidence">94.2%</strong>
+                                            </div>
+                                            <div class="confidence-bar">
+                                                <div class="confidence-fill" id="result-confidence-fill" style="width: 94%;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Computer Vision Extracted Features (HSV) -->
+                                <div class="features-section">
+                                    <h4><i class="fa-solid fa-palette"></i> OpenCV Extracted HSV Features</h4>
+                                    <div class="features-grid">
+                                        <div class="feature-item">
+                                            <span class="feature-name">Mean Hue (H)</span>
+                                            <span class="feature-val" id="feat-h">0.0</span>
+                                            <span class="feature-range">Range: 0–179</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <span class="feature-name">Mean Saturation (S)</span>
+                                            <span class="feature-val" id="feat-s">0.0</span>
+                                            <span class="feature-range">Range: 0–255</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <span class="feature-name">Mean Value (V)</span>
+                                            <span class="feature-val" id="feat-v">0.0</span>
+                                            <span class="feature-range">Range: 0–255</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Water Safety Recommendation -->
+                                <div class="recommendation-card" id="recommendation-card">
+                                    <div class="rec-icon"><i class="fa-solid fa-circle-check"></i></div>
+                                    <div class="rec-text">
+                                        <h4 id="rec-title">Water is Safe & Neutral</h4>
+                                        <p id="rec-desc">The estimated pH is within the standard potable range (6.5 to 8.5) specified by drinking water quality standards.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 3: History & Charts -->
+                <section id="history-section" class="content-section">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-chart-simple"></i> History & Analytical Trends</h2>
+                        <span class="section-desc">Historical record log and graphical pH distribution tracking</span>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-chart-line"></i> pH Timeline Trend</h3>
+                                <span class="chart-tag">Safe Zone (6.5 - 8.5)</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="phTrendChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-chart-pie"></i> Classification Ratio</h3>
+                                <span class="chart-tag">Distribution</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="distributionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- History Table Card -->
+                    <div class="history-card">
+                        <div class="table-header-bar">
+                            <h3><i class="fa-solid fa-table-list"></i> Analysis History Records</h3>
+                            <div class="table-actions">
+                                <button class="btn btn-sm btn-outline" id="refresh-table-btn">
+                                    <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                                </button>
+                                <button class="btn btn-sm btn-danger-outline" id="clear-history-btn">
+                                    <i class="fa-solid fa-trash-can"></i> Clear History
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="history-table" id="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Date & Time</th>
+                                        <th>Image</th>
+                                        <th>Predicted pH</th>
+                                        <th>Classification</th>
+                                        <th>Confidence</th>
+                                        <th>Mean HSV (H, S, V)</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-table-body">
+                                    <tr>
+                                        <td colspan="8" class="text-center empty-msg">Loading records...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 4: About Project -->
+                <section id="about-section" class="content-section">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-circle-info"></i> About Project</h2>
+                        <span class="section-desc">Architecture, workflow pipeline, and methodology</span>
+                    </div>
+
+                    <div class="about-grid">
+                        <div class="about-card">
+                            <h3><i class="fa-solid fa-lightbulb"></i> Project Abstract</h3>
+                            <p>
+                                This project presents an automated, computer vision-assisted approach to estimate water pH using standard chemical pH test strips. By capturing strip photographs, OpenCV processes the image to isolate the indicator pad, extract color features in the <strong>HSV (Hue, Saturation, Value)</strong> color space, and feed them into a pre-trained <strong>Random Forest Regression</strong> machine learning model.
+                            </p>
+                            <p>
+                                The predicted pH value is subsequently classified into <strong>Acidic (pH &lt; 6.5)</strong>, <strong>Safe / Neutral (6.5 &le; pH &le; 8.5)</strong>, or <strong>Alkaline (pH &gt; 8.5)</strong> to evaluate water potability.
+                            </p>
+                        </div>
+
+                        <div class="about-card">
+                            <h3><i class="fa-solid fa-diagram-project"></i> Pipeline Workflow</h3>
+                            <div class="workflow-steps">
+                                <div class="step-item">
+                                    <div class="step-num">1</div>
+                                    <div class="step-text">
+                                        <strong>Image Upload & Validation</strong>
+                                        <span>User uploads pH strip image (JPG/PNG), validated for file format and dimensions.</span>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <div class="step-num">2</div>
+                                    <div class="step-text">
+                                        <strong>OpenCV Preprocessing</strong>
+                                        <span>Image resizing, Gaussian blur filtering (5x5 kernel), and Canny edge detection.</span>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <div class="step-num">3</div>
+                                    <div class="step-text">
+                                        <strong>ROI Detection & Fallback</strong>
+                                        <span>Contour bounding-box extraction with intelligent central-region fallback to prevent demo failures.</span>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <div class="step-num">4</div>
+                                    <div class="step-text">
+                                        <strong>HSV Feature Extraction</strong>
+                                        <span>Conversion to HSV color space and computation of Mean Hue, Mean Saturation, and Mean Value.</span>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <div class="step-num">5</div>
+                                    <div class="step-text">
+                                        <strong>Random Forest Regressor</strong>
+                                        <span>Features passed to <code>water_quality_model.pkl</code> to predict numerical pH and calculate model confidence.</span>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <div class="step-num">6</div>
+                                    <div class="step-text">
+                                        <strong>SQLite Persistence & Dashboard</strong>
+                                        <span>Results stored locally in SQLite <code>analyses</code> table and rendered with dynamic Chart.js analytics.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="about-card full-width">
+                            <h3><i class="fa-solid fa-triangle-exclamation"></i> Project Notes & Limitations</h3>
+                            <div class="alert-box">
+                                <p>
+                                    <strong>Academic Demonstration Disclaimer:</strong> This application is built as a college mini-project demonstration. It utilizes a local <strong>SQLite database</strong> and a machine-learning regression model trained on calibrated pH colorimetric standards. It does not employ cloud databases (such as Firebase), IoT hardware probes, or laboratory validation. Camera lighting, shadows, and camera white-balance variations can affect color extraction.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Footer -->
+            <footer class="app-footer">
+                <p>AI-Based Water Quality Detection Mini-Project &bull; FastAPI + OpenCV + scikit-learn + SQLite</p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Custom JS -->
+    <script src="/static/script.js"></script>
+</body>
+</html>
